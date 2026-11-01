@@ -235,8 +235,18 @@
       render();
       return;
     }
+    // まれに書き込みが一時的に permission-denied で弾かれることがあるので、1回だけやり直す
+    try { await commit(fn, args); }
+    catch (e) {
+      if (e.code !== 'permission-denied') throw e;
+      await new Promise((r) => setTimeout(r, 400));
+      await commit(fn, args);
+    }
+  }
+
+  function commit(fn, args) {
     const ref = roomRef();
-    await db.runTransaction(async (tx) => {
+    return db.runTransaction(async (tx) => {
       const doc = await tx.get(ref);
       if (!doc.exists) throw new Error('部屋がありません。');
       const res = fn(doc.data(), uid, ...args, { now: nowMs() });

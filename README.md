@@ -11,9 +11,9 @@
 |---|---|
 | ルール（設立・成長・合併・中間決算・最終精算） | 完成。`node test/simulate.js 300` で不変条件を確認 |
 | ひとりモード（CPU 1〜5体） | 完成。ブラウザで最後まで通しプレイ確認済み |
-| 部屋システム（作成・参加・CPU追加・ホスト引き継ぎ・代わりに進める） | 実装済み・**Firebase 未接続のため未確認** |
-| Firebase プロジェクト | 未作成（`js/firebase-config.js` が `null` のあいだはオンラインボタンが押せない） |
-| 公開（GitHub Pages） | 未 |
+| 部屋システム（作成・参加・CPU追加・ホスト引き継ぎ・代わりに進める） | 完成。ホスト＋CPU＋別アカウントのゲストで1ゲーム通し確認済み（ホスト引き継ぎ・代わりに進めるは実機未確認） |
+| Firebase プロジェクト `mergetown-online`（Firestore asia-northeast1、匿名認証） | 作成済み・ルール適用済み |
+| 公開（GitHub Pages） | https://mkt918.github.io/mergetown-online/ |
 | ミニゲーム化 | のちに |
 
 ## ファイル
