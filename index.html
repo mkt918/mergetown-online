@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/tokens.css?v=1">
-  <link rel="stylesheet" href="css/style.css?v=1">
+  <link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
 
@@ -45,6 +45,8 @@
 
     <section class="box">
       <h2>ひとりで遊ぶ</h2>
+      <button type="button" id="tutorial-btn" class="btn btn--primary btn--wide">📖 ルールを教えてもらう（チュートリアル）</button>
+      <p class="hint">はじめてならここから。実際に遊びながら、設立・成長・合併を5分ほどで体験できます。</p>
       <div class="join-row">
         <label class="field-label field-label--inline" for="cpu-count-input">CPU</label>
         <select id="cpu-count-input">
@@ -93,11 +95,13 @@
     <header class="topbar">
       <span id="topbar-room" class="topbar__room"></span>
       <span id="topbar-turn" class="topbar__turn"></span>
+      <button type="button" id="rules-btn" class="btn btn--small">ルール</button>
       <button type="button" id="game-leave-btn" class="btn btn--ghost btn--small">退出</button>
     </header>
 
     <div class="game-layout">
       <section class="board-wrap">
+        <div id="coach" class="coach hidden" aria-live="polite"></div>
         <svg id="board" class="board" role="img" aria-label="盤面"></svg>
         <div id="action-panel" class="action-panel"></div>
       </section>
@@ -131,6 +135,7 @@
   <script src="js/firebase-config.js?v=1"></script>
   <script src="js/logic.js?v=1"></script>
   <script src="js/board.js?v=1"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/tutorial.js?v=1"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>

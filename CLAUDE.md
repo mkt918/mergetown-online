@@ -5,7 +5,8 @@
 ## 守ること
 
 - 既存ゲーム（アクワイア）のルールをそのまま写さない。ルールを足すときもオリジナルの仕組みにする。
-- ルールは `js/logic.js` にだけ書き、DOM を触らない。変えたら `docs/rules.md` も直し、`node test/simulate.js 300` を通す。
+- ルールは `js/logic.js` にだけ書き、DOM を触らない。変えたら `docs/rules.md` と、ゲーム中のルール早見表（`js/app.js` の `RULES_HTML`）、チュートリアルの解説文（`js/tutorial.js`）も直し、`node test/simulate.js 300` と `node test/tutorial.js` を通す。
+- テストプレイは通信なしのひとりモードで行う（オンラインは部屋を作らないと試せないため）。
 - `room` は JSON にできる値だけ（Firestore の 1ドキュメント。配列の中に配列を入れない）。
 - 色・余白・角丸は `css/tokens.css` の変数だけを使う。
 - 部屋コードは4桁の数字。最大6人（`MAX_PLAYERS` と `firestore.rules` の両方）。

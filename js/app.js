@@ -6,6 +6,7 @@
   'use strict';
   const L = window.MergeTown;
   const B = window.MergeTownBoard;
+  const Tut = window.MergeTownTutorial;
   const el = (id) => document.getElementById(id);
 
   const NAME_KEY = 'mergetown.name';
@@ -29,6 +30,25 @@
   let buyDraftKey = '';
   let seenNotice = null;
   let modalKind = null;
+  let tut = null; // チュートリアル中だけ { step } が入る（ひとりモード専用）
+
+  const RULES_HTML = '<h2>ルール早見表</h2>'
+    + '<h3>ゴール</h3><p>ゲームが終わったときに、いちばんお金を持っている人の勝ち。</p>'
+    + '<h3>1回の手番</h3><ol class="modal__lines"><li>手札から区画を1枚置く</li><li>株を買う（最大2枚・買わなくてもOK）</li><li>山札から引いて手札を3枚にもどす</li></ol>'
+    + '<h3>区画を置くと</h3><ul class="modal__lines">'
+    + '<li>どこともつながらない → <strong>空き区画</strong>になる</li>'
+    + '<li>空き区画どうしがつながる → <strong>会社を設立</strong>（置いた人が社長・株1枚）</li>'
+    + '<li>会社のとなり → その会社が<strong>成長</strong></li>'
+    + '<li>2つ以上の会社のあいだ → <strong>合併</strong></li></ul>'
+    + '<h3>株価</h3><p><strong>マス数 × 100</strong>（どの会社も同じ計算）。</p>'
+    + '<h3>合併</h3><ul class="modal__lines">'
+    + '<li>大きい会社が残り、小さい会社を吸収（同じ大きさなら置いた人が選ぶ）</li>'
+    + '<li>吸収された会社の株主：1枚 = 株価×1.5 で買い取り</li>'
+    + '<li>吸収された会社の社長：マス数×100 のボーナス</li></ul>'
+    + '<h3>決算</h3><ul class="modal__lines">'
+    + '<li>中間決算（ゲームの半分）：株1枚 = マス数×10、社長はさらにマス数×30</li>'
+    + '<li>最終精算：株は株価で売却、社長はマス数×100</li></ul>'
+    + '<div class="modal__actions"><button type="button" class="btn btn--primary" data-close>とじる</button></div>';
 
   const nowMs = () => Date.now() + serverOffset;
   const roomRef = () => db.collection('rooms').doc(roomCode);
@@ -48,6 +68,8 @@
     el('join-btn').onclick = () => joinRoom(el('code-input').value.trim());
     el('code-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(el('code-input').value.trim()); });
     el('solo-btn').onclick = startSolo;
+    el('tutorial-btn').onclick = startTutorial;
+    el('rules-btn').onclick = () => openModal('rules', RULES_HTML);
     el('wait-leave-btn').onclick = leaveRoom;
     el('game-leave-btn').onclick = () => {
       if (room && room.status === 'playing' && !solo && !confirm('ゲームの途中です。抜けても席は残り、ホストが代わりに進められます。退出しますか？')) return;
@@ -185,6 +207,7 @@
     clearInterval(heartbeatTimer);
     heartbeatTimer = null;
     solo = false;
+    tut = null;
     uid = realUid;
     room = null;
     roomCode = null;
@@ -198,12 +221,25 @@
     el('lobby-error').textContent = '';
     const n = Number(el('cpu-count-input').value) || 2;
     solo = true;
+    tut = null;
     uid = 'you';
     roomCode = null;
     seenNotice = null;
     let r = L.createRoom({ uid, name: myName() || 'あなた', length: el('length-input').value, now: Date.now() });
     for (let i = 0; i < n; i++) r = L.addCpu(r, uid, {}).room;
     room = L.startGame(r, uid, { now: Date.now() }).room;
+    render();
+  }
+
+  // チュートリアル: 決まった盤面で、せんせい（CPU）と6手番ずつ。設立・成長・合併を台本どおり体験する
+  function startTutorial() {
+    el('lobby-error').textContent = '';
+    solo = true;
+    tut = Tut.begin();
+    uid = 'you';
+    roomCode = null;
+    seenNotice = null;
+    room = Tut.createRoom(myName() || 'あなた', Date.now());
     render();
   }
 
@@ -222,6 +258,10 @@
   function cpuStep(r, _uid, opts) {
     const cur = L.currentUid(r);
     if (r.status !== 'playing' || !r.players[cur].cpu) return { error: 'skip' };
+    if (tut) {
+      const scripted = Tut.cpuScript(r, opts);
+      if (scripted) return scripted;
+    }
     return L.aiStep(r, opts);
   }
   function fnFor(name) { return name === 'cpuStep' ? cpuStep : L[name]; }
@@ -334,16 +374,21 @@
     const g = room.game;
     const cur = L.currentUid(room);
     const isMe = cur === uid && room.status === 'playing';
-    el('topbar-room').textContent = solo ? 'ひとりモード' : '部屋 ' + roomCode;
+    el('topbar-room').textContent = tut ? 'チュートリアル' : solo ? 'ひとりモード' : '部屋 ' + roomCode;
     el('topbar-turn').textContent = room.status === 'ended'
       ? 'ゲーム終了'
       : '手番 ' + (g.turnCount + 1) + ' / ' + g.totalTurns + '・' + room.players[cur].name + ' の番';
 
     const myHand = g.hands[uid] || [];
-    const playable = new Set(myHand.filter((t) => L.isPlayable(g, t)));
+    // チュートリアル中は、解説している区画だけ置ける
+    const gate = tut ? Tut.gate(tut, room) : null;
+    const step = tut ? Tut.current(tut, room) : null;
+    const playable = new Set(myHand.filter((t) => L.isPlayable(g, t) && (!gate || gate.includes(t))));
+    renderCoach(step);
     B.render(el('board'), g, {
       hand: myHand,
       playable,
+      focus: step && isMe && g.phase === 'place' ? step.focus : undefined,
       onPick: (t) => { if (isMe && g.phase === 'place' && playable.has(t)) act('place', t); },
     });
 
@@ -351,6 +396,18 @@
     renderCompanies(g);
     renderPlayers(g, cur);
     el('log').innerHTML = g.log.slice().reverse().map((t) => '<li>' + esc(t) + '</li>').join('');
+  }
+
+  function renderCoach(step) {
+    const box = el('coach');
+    if (!tut || !step) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+    // 解説の本文は tutorial.js の固定文字列だけ（入力された名前などは入らない）
+    box.innerHTML = '<div class="coach__face" aria-hidden="true">🧑‍🏫</div><div class="coach__body">'
+      + '<p class="coach__title">' + step.title + '</p><div class="coach__text">' + step.body + '</div>'
+      + (step.button ? '<button type="button" class="btn btn--primary btn--small" id="coach-next">' + step.button + '</button>' : '')
+      + '</div>';
+    box.classList.remove('hidden');
+    if (step.button) el('coach-next').onclick = () => { Tut.next(tut); render(); };
   }
 
   const KIND_LABEL = { loose: '空き区画', found: '会社設立', grow: '成長', merge: '合併' };
@@ -366,7 +423,7 @@
     const handHtml = (clickable) => '<div class="hand">' + myHand.map((t) => {
       const a = L.analyzeTile(g.board, t);
       const ok = playable.has(t);
-      let kind = ok ? KIND_LABEL[a.kind] : 'いまは置けない';
+      let kind = ok ? KIND_LABEL[a.kind] : (L.isPlayable(g, t) ? 'あとで使う' : 'いまは置けない');
       if (ok && a.kind === 'grow') kind = L.companyName(a.companies[0]) + ' 成長';
       return '<button type="button" class="tile" data-tile="' + t + '"' + (clickable && ok ? '' : ' disabled') + '>'
         + '<span class="tile__label">' + L.CELLS[t].label + '</span><span class="tile__kind">' + kind + '</span></button>';
@@ -478,7 +535,9 @@
     if (seq === seenNotice) return;
     seenNotice = seq;
     if (room.status === 'ended') { showResults(); return; }
+    const note = tut ? Tut.noticeNote(n.title) : '';
     openModal('notice', '<h2>' + esc(n.title) + '</h2><ul class="modal__lines">' + n.lines.map((l) => '<li>' + esc(l) + '</li>').join('') + '</ul>'
+      + (note ? '<p class="coach-note">🧑‍🏫 ' + esc(note) + '</p>' : '')
       + '<div class="modal__actions"><button type="button" class="btn btn--primary" data-close>OK</button></div>');
   }
 
@@ -490,8 +549,9 @@
       + (r.uid === uid ? '（あなた）' : '') + '</span><span class="cash">' + yen(r.cash) + '</span></li>').join('');
     openModal('result', '<h2>結果</h2><ol class="rank-list">' + ranks + '</ol>'
       + (n ? '<h3>' + esc(n.title) + '</h3><ul class="modal__lines">' + n.lines.map((l) => '<li>' + esc(l) + '</li>').join('') + '</ul>' : '')
+      + (tut ? '<p class="coach-note">🧑‍🏫 ' + esc(Tut.noticeNote('最終精算')) + ' ふつうのゲームでは、手番が多く、CPUの数も選べます。</p>' : '')
       + '<div class="modal__actions">'
-      + (isHost ? '<button type="button" class="btn btn--primary" id="again-btn">' + (solo ? 'もう一度' : '待合室へ戻る') + '</button>' : '')
+      + (isHost ? '<button type="button" class="btn btn--primary" id="again-btn">' + (tut ? 'ふつうに遊んでみる' : solo ? 'もう一度' : '待合室へ戻る') + '</button>' : '')
       + '<button type="button" class="btn" data-close>盤面を見る</button>'
       + '<button type="button" class="btn btn--ghost" id="to-lobby-btn">ロビーへ</button></div>');
     if (el('again-btn')) el('again-btn').onclick = () => { closeModal(); if (solo) startSolo(); else act('rematch'); };
@@ -521,7 +581,7 @@
   }
 
   // 動作確認用（コンソールから呼べる）
-  window.MergeTownApp = { get room() { return room; }, startSolo, act };
+  window.MergeTownApp = { get room() { return room; }, get tut() { return tut; }, startSolo, startTutorial, act };
 
   init();
 })();
