@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // rooms/{4桁コード}: 1部屋 = 1ドキュメント。全状態（手札・山札も）をここに置く。
+    match /rooms/{roomCode} {
+      function signedIn() { return request.auth != null; }
+      function isMember() { return signedIn() && request.auth.uid in resource.data.order; }
+      function nameOk(data) {
+        return data.players[request.auth.uid].name is string
+          && data.players[request.auth.uid].name.size() >= 1
+          && data.players[request.auth.uid].name.size() <= 12;
+      }
+      // 待合室で自分を order の末尾に足す参加
+      function isJoining() {
+        return signedIn()
+          && resource.data.status == 'lobby'
+          && resource.data.order.size() < 6
+          && request.resource.data.order.size() == resource.data.order.size() + 1
+          && request.resource.data.order[resource.data.order.size()] == request.auth.uid
+          && nameOk(request.resource.data);
+      }
+      // hostUid は「変えない」「自分にする（引き継ぎ）」「現ホストが変える」だけ
+      function hostChangeOk() {
+        return request.resource.data.hostUid == resource.data.hostUid
+          || request.resource.data.hostUid == request.auth.uid
+          || resource.data.hostUid == request.auth.uid;
+      }
+      function settingsChangeOk() {
+        return request.resource.data.settings == resource.data.settings
+          || resource.data.hostUid == request.auth.uid;
+      }
+
+      // 部屋コードを知っている人だけ読める（一覧は取れない）
+      allow get: if signedIn();
+      allow list: if false;
+      // 新規作成と、1日以上放置された部屋の作り直し
+      allow create: if signedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.order == [request.auth.uid]
+        && request.resource.data.status == 'lobby'
+        && nameOk(request.resource.data);
+      allow update: if ((isMember() || isJoining()) && hostChangeOk() && settingsChangeOk())
+        || (signedIn()
+          && resource.data.updatedAt < request.time - duration.value(1, 'd')
+          && request.resource.data.hostUid == request.auth.uid
+          && request.resource.data.order == [request.auth.uid]
+          && request.resource.data.status == 'lobby');
+      allow delete: if false;
+    }
+  }
+}

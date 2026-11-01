@@ -1,0 +1,58 @@
+/* 色・余白・角丸はここの変数だけを使う */
+:root {
+  --bg: #f4efe4;
+  --surface: #fffdf8;
+  --surface-2: #efe7d6;
+  --ink: #2b2620;
+  --ink-soft: #6b6255;
+  --line: #d9cfbc;
+  --accent: #1f6f5c;
+  --accent-ink: #ffffff;
+  --danger: #b3412e;
+
+  --cell-empty: #e8dfcc;
+  --cell-empty-line: #cbbfa6;
+  --cell-loose: #9c8a6a;
+  --cell-hand: #fff3b0;
+  --cell-hand-line: #c99a00;
+  --cell-last: #2b2620;
+
+  --co-a: #d9573b;
+  --co-b: #3a9a5b;
+  --co-c: #d6a21e;
+  --co-d: #6f8597;
+  --co-e: #8a4fb0;
+  --co-ink: #ffffff;
+
+  --radius: 14px;
+  --radius-sm: 8px;
+  --gap: 12px;
+  --gap-lg: 20px;
+  --shadow: 0 2px 10px rgba(60, 45, 20, 0.10);
+
+  --font: 'M PLUS Rounded 1c', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1a17;
+    --surface: #26231f;
+    --surface-2: #302c26;
+    --ink: #f1ebe0;
+    --ink-soft: #b0a693;
+    --line: #443e35;
+    --accent: #3fb391;
+    --accent-ink: #10201b;
+    --danger: #e4775f;
+
+    --cell-empty: #3a352d;
+    --cell-empty-line: #4d463b;
+    --cell-loose: #a8946f;
+    --cell-hand: #6b5a16;
+    --cell-hand-line: #f0c53a;
+    --cell-last: #ffffff;
+
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  }
+}

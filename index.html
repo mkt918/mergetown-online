@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>マージタウン</title>
+  <meta name="description" content="六角形の街に区画を置いて会社を立ち上げ、株と合併で稼ぐ10分経済ゲーム。部屋コードで2〜6人オンライン対戦。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%99%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css?v=1">
+  <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+
+  <!-- ===== ロビー ===== -->
+  <main id="lobby-screen" class="screen">
+    <header class="hero">
+      <p class="hero__kicker">10分でおわる経済ゲーム</p>
+      <h1 class="hero__title">マージタウン</h1>
+      <p class="hero__lead">区画を置いて会社をつくり、株を買って、合併で稼ごう。</p>
+    </header>
+    <p id="connection-status" class="status-pill">接続中…</p>
+
+    <section class="box">
+      <label class="field-label" for="name-input">なまえ</label>
+      <input type="text" id="name-input" maxlength="12" placeholder="ニックネーム" autocomplete="nickname">
+      <label class="field-label" for="length-input">ゲームの長さ</label>
+      <select id="length-input">
+        <option value="short">みじかめ（約6分）</option>
+        <option value="normal" selected>ふつう（約10分）</option>
+        <option value="long">ながめ（約15分）</option>
+      </select>
+    </section>
+
+    <section class="box">
+      <h2>オンラインで遊ぶ</h2>
+      <button type="button" id="create-btn" class="btn btn--primary">部屋をつくる</button>
+      <div class="join-row">
+        <input type="text" id="code-input" inputmode="numeric" maxlength="4" pattern="\d{4}" placeholder="部屋コード4けた" aria-label="部屋コード">
+        <button type="button" id="join-btn" class="btn">入る</button>
+      </div>
+    </section>
+
+    <section class="box">
+      <h2>ひとりで遊ぶ</h2>
+      <div class="join-row">
+        <label class="field-label field-label--inline" for="cpu-count-input">CPU</label>
+        <select id="cpu-count-input">
+          <option value="1">1体</option>
+          <option value="2" selected>2体</option>
+          <option value="3">3体</option>
+          <option value="4">4体</option>
+          <option value="5">5体</option>
+        </select>
+        <button type="button" id="solo-btn" class="btn">はじめる</button>
+      </div>
+      <p class="hint">通信なしで、この端末だけで遊べます。</p>
+    </section>
+
+    <p id="lobby-error" class="error" role="alert"></p>
+    <p class="footer-link"><a href="docs/rules.md" target="_blank" rel="noopener">ルールをくわしく読む</a></p>
+  </main>
+
+  <!-- ===== 待合室 ===== -->
+  <main id="wait-screen" class="screen hidden">
+    <section class="box box--center">
+      <p class="field-label">部屋コード</p>
+      <p id="wait-code" class="room-code">----</p>
+      <button type="button" id="copy-link-btn" class="btn btn--small">招待リンクをコピー</button>
+    </section>
+    <section class="box">
+      <h2>参加者 <span id="wait-count"></span></h2>
+      <ul id="wait-players" class="player-list"></ul>
+      <div id="host-tools" class="host-tools hidden">
+        <label class="field-label" for="wait-length">ゲームの長さ</label>
+        <select id="wait-length">
+          <option value="short">みじかめ（約6分）</option>
+          <option value="normal">ふつう（約10分）</option>
+          <option value="long">ながめ（約15分）</option>
+        </select>
+        <button type="button" id="add-cpu-btn" class="btn btn--small">CPUを入れる</button>
+        <button type="button" id="start-btn" class="btn btn--primary">はじめる</button>
+      </div>
+      <p id="wait-hint" class="hint"></p>
+    </section>
+    <button type="button" id="wait-leave-btn" class="btn btn--ghost">部屋を出る</button>
+  </main>
+
+  <!-- ===== ゲーム ===== -->
+  <div id="game-screen" class="screen hidden">
+    <header class="topbar">
+      <span id="topbar-room" class="topbar__room"></span>
+      <span id="topbar-turn" class="topbar__turn"></span>
+      <button type="button" id="game-leave-btn" class="btn btn--ghost btn--small">退出</button>
+    </header>
+
+    <div class="game-layout">
+      <section class="board-wrap">
+        <svg id="board" class="board" role="img" aria-label="盤面"></svg>
+        <div id="action-panel" class="action-panel"></div>
+      </section>
+
+      <aside class="side">
+        <section class="panel">
+          <h3>会社</h3>
+          <table class="company-table">
+            <thead><tr><th>会社</th><th>マス</th><th>株価</th><th>残り株</th><th>社長</th></tr></thead>
+            <tbody id="company-rows"></tbody>
+          </table>
+        </section>
+        <section class="panel">
+          <h3>プレイヤー</h3>
+          <ul id="player-rows" class="player-rows"></ul>
+        </section>
+        <section class="panel">
+          <h3>できごと</h3>
+          <ol id="log" class="log"></ol>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true"></div>
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js?v=1"></script>
+  <script src="js/logic.js?v=1"></script>
+  <script src="js/board.js?v=1"></script>
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>
